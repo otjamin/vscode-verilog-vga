@@ -14,18 +14,22 @@
   "contributes": {
     "commands": [
       {
-        "command": "verilogvga.helloWorld",
-        "title": "Hello World"
+        "command": "verilogvga.simulate",
+        "title": "VerilogVGA: Simulate VGA Output"
       }
     ]
   },
   "scripts": {
-    "vscode:prepublish": "npm run compile",
-    "compile": "tsc -p ./",
+    "vscode:prepublish": "npm run compile && npm run copy-wasm",
+    "compile": "tsc -p ./ && npm run copy-wasm",
+    "copy-wasm": "mkdir -p out/verilator && cp src/verilator/verilator_bin.wasm out/verilator/verilator_bin.wasm && cp src/verilator/verilator_bin.js out/verilator/verilator_bin.js",
     "watch": "tsc -watch -p ./",
     "pretest": "npm run compile && npm run lint",
     "lint": "eslint src",
     "test": "vscode-test"
+  },
+  "dependencies": {
+    "binaryen": "^122.0.0"
   },
   "devDependencies": {
     "@types/vscode": "^1.109.0",

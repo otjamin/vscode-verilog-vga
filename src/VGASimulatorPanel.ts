@@ -102,7 +102,7 @@ export class VGASimulatorPanel {
     }
 
     // Read the wasm binary and send it along with sources
-    const wasmPath = path.join(this.extensionUri.fsPath, 'src', 'verilator', 'verilator_bin.wasm');
+    const wasmPath = path.join(this.extensionUri.fsPath, 'dist', 'verilator_bin.wasm');
     let wasmBase64: string;
     try {
       const wasmBuf = fs.readFileSync(wasmPath);

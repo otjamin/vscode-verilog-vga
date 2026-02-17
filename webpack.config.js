@@ -37,10 +37,6 @@ const extensionConfig = {
             loader: 'ts-loader'
           }
         ]
-      },
-      {
-        test: /\.wasm$/,
-        type: 'asset/resource'
       }
     ]
   },
@@ -82,7 +78,8 @@ const webviewConfig = {
       },
       {
         test: /\.wasm$/,
-        type: 'asset/resource'
+        type: 'asset/resource',
+        generator: { filename: '[name][ext]' }
       }
     ]
   },

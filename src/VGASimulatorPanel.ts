@@ -180,11 +180,20 @@ export class VGASimulatorPanel {
       border: 1px solid #444;
       width: 640px;
       height: auto;
+      outline: none;
+    }
+    #vga-canvas:focus {
+      border-color: #0af;
     }
     #status {
       margin-top: 8px;
       font-size: 12px;
       color: #888;
+    }
+    #controls-hint {
+      margin-top: 6px;
+      font-size: 11px;
+      color: #666;
     }
     #error-box {
       margin-top: 8px;
@@ -204,8 +213,9 @@ export class VGASimulatorPanel {
 </head>
 <body>
   <h2>VGA Simulator</h2>
-  <canvas id="vga-canvas" width="736" height="520"></canvas>
+  <canvas id="vga-canvas" width="736" height="520" tabindex="0"></canvas>
   <div id="status">Waiting for compilation...</div>
+  <div id="controls-hint">Click the display to enable keyboard input &mdash; Arrow keys, Space, 0&ndash;9</div>
   <div id="error-box"></div>
   <script nonce="${nonce}" src="${scriptUri}"></script>
 </body>

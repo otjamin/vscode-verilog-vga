@@ -3,13 +3,16 @@ import { detectTopModule } from '../verilog';
 import { HDLModuleDef } from '../sim/hdltypes';
 import { HDLModuleWASM } from '../sim/hdlwasm';
 import {
-  decodeVGAOutput,
   detectSyncPolarity,
+  getVGASignalOffsets,
+  KEY_MAP,
+  readVGASignals,
   renderVGAFrame,
   resetModule,
   SyncPolarity,
   VGA_HEIGHT,
   VGA_WIDTH,
+  VGASignalOffsets,
 } from '../sim/vga';
 
 // Acquire the VS Code API
@@ -22,8 +25,12 @@ const errorBox = document.getElementById('error-box')!;
 
 let jmod: HDLModuleWASM | null = null;
 let syncPolarity: SyncPolarity = { hsyncActiveLow: false, vsyncActiveLow: false };
+let vgaOffsets: VGASignalOffsets | null = null;
 let stopped = true;
 let imageData = ctx.createImageData(VGA_WIDTH, VGA_HEIGHT);
+
+/** Set of signal names that actually exist in the current design. */
+let availableKeySignals: Set<string> = new Set();
 
 function showError(text: string) {
   errorBox.style.display = 'block';
@@ -43,13 +50,34 @@ function reset() {
   if (!jmod) { return; }
   resetModule(jmod);
   syncPolarity = detectSyncPolarity(jmod);
+  vgaOffsets = getVGASignalOffsets(jmod);
   resetModule(jmod);
+}
+
+function detectAvailableKeySignals() {
+  availableKeySignals.clear();
+  if (!jmod) { return; }
+  for (const signal of Object.values(KEY_MAP)) {
+    try {
+      if (jmod.globals.lookup(signal)) {
+        availableKeySignals.add(signal);
+      }
+    } catch { /* signal not present in design */ }
+  }
+}
+
+function setKeyState(key: string, pressed: boolean) {
+  if (!jmod) { return; }
+  const signal = KEY_MAP[key];
+  if (!signal || !availableKeySignals.has(signal)) { return; }
+  jmod.state[signal] = pressed ? 1 : 0;
 }
 
 async function initModule(modules: Record<string, HDLModuleDef>) {
   if (jmod) { jmod.dispose(); }
   jmod = new HDLModuleWASM(modules['TOP'], modules['@CONST-POOL@']);
   await jmod.init();
+  detectAvailableKeySignals();
   reset();
 }
 
@@ -116,7 +144,7 @@ async function handleCompile(sources: Record<string, string>, wasmBase64: string
 function animationFrame() {
   requestAnimationFrame(animationFrame);
 
-  if (stopped || !jmod) {
+  if (stopped || !jmod || !vgaOffsets) {
     return;
   }
 
@@ -125,9 +153,9 @@ function animationFrame() {
   ctx.putImageData(imageData, 0, 0);
 
   // Advance to next vsync boundary
-  const uo_out_offset = jmod.globals.lookup('uo_out').offset;
+  const offsets = vgaOffsets;
   const getVSync = () => {
-    const raw = !!(jmod!.data8[uo_out_offset] & 0b00001000);
+    const raw = !!jmod!.data8[offsets.vsync];
     return syncPolarity.vsyncActiveLow ? !raw : raw;
   };
   let counter = 0;
@@ -142,6 +170,21 @@ function animationFrame() {
 }
 
 requestAnimationFrame(animationFrame);
+
+// Keyboard input handling
+document.addEventListener('keydown', (e) => {
+  if (KEY_MAP[e.key]) {
+    e.preventDefault();
+    setKeyState(e.key, true);
+  }
+});
+
+document.addEventListener('keyup', (e) => {
+  if (KEY_MAP[e.key]) {
+    e.preventDefault();
+    setKeyState(e.key, false);
+  }
+});
 
 // Listen for messages from the extension
 window.addEventListener('message', (event) => {

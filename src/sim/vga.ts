@@ -15,34 +15,59 @@ export interface VGASignals {
   b: number;
 }
 
+/** Byte-offsets of the standalone VGA output signals inside the WASM memory. */
+export interface VGASignalOffsets {
+  hsync: number;
+  vsync: number;
+  r: number;
+  g: number;
+  b: number;
+}
+
+export function getVGASignalOffsets(mod: HDLModuleWASM): VGASignalOffsets {
+  const required = ['hsync', 'vsync', 'r', 'g', 'b'] as const;
+  const missing = required.filter((name) => !mod.globals.lookup(name));
+  if (missing.length > 0) {
+    throw new Error(
+      `Missing top-level VGA output port(s): ${missing.join(', ')}. ` +
+      `Your top module must declare: output wire hsync, vsync; output wire [1:0] r, g, b;`
+    );
+  }
+  return {
+    hsync: mod.globals.lookup('hsync').offset,
+    vsync: mod.globals.lookup('vsync').offset,
+    r: mod.globals.lookup('r').offset,
+    g: mod.globals.lookup('g').offset,
+    b: mod.globals.lookup('b').offset,
+  };
+}
+
 export interface SyncPolarity {
   hsyncActiveLow: boolean;
   vsyncActiveLow: boolean;
 }
 
-export function decodeVGAOutput(uo_out: number, polarity?: SyncPolarity): VGASignals {
-  const hraw = !!(uo_out & 0b10000000);
-  const vraw = !!(uo_out & 0b00001000);
+export function readVGASignals(mod: HDLModuleWASM, offsets: VGASignalOffsets, polarity?: SyncPolarity): VGASignals {
+  const hraw = !!mod.data8[offsets.hsync];
+  const vraw = !!mod.data8[offsets.vsync];
   return {
     hsync: polarity?.hsyncActiveLow ? !hraw : hraw,
     vsync: polarity?.vsyncActiveLow ? !vraw : vraw,
-    r: ((uo_out & 0b00000001) << 1) | ((uo_out & 0b00010000) >> 4),
-    g: ((uo_out & 0b00000010) << 0) | ((uo_out & 0b00100000) >> 5),
-    b: ((uo_out & 0b00000100) >> 1) | ((uo_out & 0b01000000) >> 6),
+    r: mod.data8[offsets.r] & 0x3,
+    g: mod.data8[offsets.g] & 0x3,
+    b: mod.data8[offsets.b] & 0x3,
   };
 }
 
 export function detectSyncPolarity(mod: HDLModuleWASM): SyncPolarity {
-  const uo_out_offset = mod.globals.lookup('uo_out').offset;
+  const offsets = getVGASignalOffsets(mod);
   const MAX_TICKS = 500_000;
 
-  function detectBit(mask: number): boolean {
-    const bit = () => !!(mod.data8[uo_out_offset] & mask);
-
+  function detectSignal(readBit: () => boolean): boolean {
     // Skip the initial (potentially partial) phase to reach a clean transition
-    const initialState = bit();
+    const initialState = readBit();
     let skipTicks = 0;
-    while (bit() === initialState && skipTicks < MAX_TICKS) {
+    while (readBit() === initialState && skipTicks < MAX_TICKS) {
       mod.tick2(1);
       skipTicks++;
     }
@@ -51,9 +76,9 @@ export function detectSyncPolarity(mod: HDLModuleWASM): SyncPolarity {
     }
 
     // Measure two complete consecutive phases; the shorter one is the sync pulse
-    const phase1State = bit();
+    const phase1State = readBit();
     let phase1Ticks = 0;
-    while (bit() === phase1State && phase1Ticks < MAX_TICKS) {
+    while (readBit() === phase1State && phase1Ticks < MAX_TICKS) {
       mod.tick2(1);
       phase1Ticks++;
     }
@@ -61,7 +86,7 @@ export function detectSyncPolarity(mod: HDLModuleWASM): SyncPolarity {
       return true;
     }
     let phase2Ticks = 0;
-    while (bit() !== phase1State && phase2Ticks < MAX_TICKS) {
+    while (readBit() !== phase1State && phase2Ticks < MAX_TICKS) {
       mod.tick2(1);
       phase2Ticks++;
     }
@@ -72,8 +97,8 @@ export function detectSyncPolarity(mod: HDLModuleWASM): SyncPolarity {
     return !pulseIsHigh;
   }
 
-  const vsyncActiveLow = detectBit(0b00001000);
-  const hsyncActiveLow = detectBit(0b10000000);
+  const vsyncActiveLow = detectSignal(() => !!mod.data8[offsets.vsync]);
+  const hsyncActiveLow = detectSignal(() => !!mod.data8[offsets.hsync]);
   return { hsyncActiveLow, vsyncActiveLow };
 }
 
@@ -84,11 +109,11 @@ export interface RenderOptions {
 }
 
 export function renderVGAFrame(mod: HDLModuleWASM, pixels: Uint8Array, options?: RenderOptions) {
-  const uo_out_offset = mod.globals.lookup('uo_out').offset;
+  const offsets = getVGASignalOffsets(mod);
   const { onTick, onLine, polarity } = options ?? {};
 
   function readSignals() {
-    return decodeVGAOutput(mod.data8[uo_out_offset], polarity);
+    return readVGASignals(mod, offsets, polarity);
   }
 
   function waitFor(condition: () => boolean, timeout = 10000) {
@@ -120,22 +145,46 @@ export function renderVGAFrame(mod: HDLModuleWASM, pixels: Uint8Array, options?:
 }
 
 export function resetModule(mod: HDLModuleWASM) {
-  const ui_in = mod.state.ui_in;
   mod.powercycle();
-  mod.state.ena = 1;
   mod.state.rst_n = 0;
-  mod.state.ui_in = ui_in;
   mod.tick2(10);
   mod.state.rst_n = 1;
 }
 
 /** Advance the simulation to the next vsync frame boundary. */
 export function skipToFrameBoundary(mod: HDLModuleWASM, polarity?: SyncPolarity) {
-  const uo_out_offset = mod.globals.lookup('uo_out').offset;
+  const offsets = getVGASignalOffsets(mod);
   const vsync = () => {
-    const raw = !!(mod.data8[uo_out_offset] & 0b00001000);
+    const raw = !!mod.data8[offsets.vsync];
     return polarity?.vsyncActiveLow ? !raw : raw;
   };
   while (!vsync()) mod.tick2(1);
   while (vsync()) mod.tick2(1);
 }
+
+/** Names of keyboard input signals that can be driven by the simulator. */
+export const KEYBOARD_SIGNALS = [
+  'key_0', 'key_1', 'key_2', 'key_3', 'key_4',
+  'key_5', 'key_6', 'key_7', 'key_8', 'key_9',
+  'key_up', 'key_down', 'key_left', 'key_right',
+  'key_space',
+] as const;
+
+/** Maps KeyboardEvent.key values to Verilog input signal names. */
+export const KEY_MAP: Record<string, string> = {
+  '0': 'key_0',
+  '1': 'key_1',
+  '2': 'key_2',
+  '3': 'key_3',
+  '4': 'key_4',
+  '5': 'key_5',
+  '6': 'key_6',
+  '7': 'key_7',
+  '8': 'key_8',
+  '9': 'key_9',
+  'ArrowUp': 'key_up',
+  'ArrowDown': 'key_down',
+  'ArrowLeft': 'key_left',
+  'ArrowRight': 'key_right',
+  ' ': 'key_space',
+};

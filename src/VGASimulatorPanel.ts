@@ -53,9 +53,8 @@ export class VGASimulatorPanel {
         return path.dirname(fsPath);
       }
     }
-    // Fallback: first workspace folder
-    const ws = vscode.workspace.workspaceFolders?.[0];
-    return ws?.uri.fsPath;
+    // No fallback - must have an active .v or .sv file
+    return undefined;
   }
 
   private constructor(panel: vscode.WebviewPanel, extensionUri: vscode.Uri, sourceDir: string) {
@@ -81,11 +80,14 @@ export class VGASimulatorPanel {
       this.disposables,
     );
 
-    // Re-compile when a Verilog file is saved
+    // Re-compile when a Verilog file is saved in the current source directory
     const watcher = vscode.workspace.onDidSaveTextDocument((doc) => {
       if (doc.fileName.endsWith('.v') || doc.fileName.endsWith('.sv')) {
-        this.sourceDir = path.dirname(doc.fileName);
-        this.compileAndSend();
+        const fileDir = path.dirname(doc.fileName);
+        // Only recompile if the file is in the current source directory or a subdirectory
+        if (fileDir.startsWith(this.sourceDir)) {
+          this.compileAndSend();
+        }
       }
     });
     this.disposables.push(watcher);
@@ -135,8 +137,7 @@ export class VGASimulatorPanel {
       if (entry.isDirectory()) {
         this.walkDir(baseDir, fullPath, sources);
       } else if (entry.isFile() && (entry.name.endsWith('.v') || entry.name.endsWith('.sv'))) {
-        const relativeName = path.relative(baseDir, fullPath);
-        sources[relativeName] = fs.readFileSync(fullPath, 'utf-8');
+        sources[entry.name] = fs.readFileSync(fullPath, 'utf-8');
       }
     }
   }

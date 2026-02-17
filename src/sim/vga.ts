@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2024-2026, Tiny Tapeout LTD
 // Author: Uri Shaked
+//
+// Modified in 2026 by Benjamin Otto to enable Tiny Tapeout-independent inputs and outputs.
 
 import { HDLModuleWASM } from './hdlwasm';
 

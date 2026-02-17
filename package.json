@@ -3,6 +3,10 @@
   "displayName": "VerilogVGA",
   "description": "",
   "version": "0.0.1",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/otjamin/vscode-verilog-vga"
+  },
   "engines": {
     "vscode": "^1.109.0"
   },

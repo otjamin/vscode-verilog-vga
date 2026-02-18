@@ -1,71 +1,53 @@
-# verilogvga README
+# VGA Simulator for Verilog in VS Code
 
-This is the README for your extension "verilogvga". After writing up a brief description, we recommend including the following sections.
+A VS Code extension that provides an integrated VGA simulator for Verilog designs. Simulate and visualize VGA output directly in your editor.
 
-## Features
+## Usage
 
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
+### Opening the Simulator
 
-For example if there is an image subfolder under your extension project workspace:
+1. **Via Command Palette**: Press `Ctrl+Shift+P` (Windows/Linux) or `Cmd+Shift+P` (macOS)
+2. Type "VerilogVGA: Open VGA Simulator"
+3. The simulator panel opens in your editor
 
-\!\[feature X\]\(images/feature-x.png\)
+### Verilog Module Interface
 
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
+#### Required VGA Output Signals
 
-## Requirements
+Your top-level Verilog module must provide the following **output ports**:
 
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
+```verilog
+output wire hsync;
+output wire vsync;
+output wire [1:0] r;
+output wire [1:0] g;
+output wire [1:0] b;
+```
 
-## Extension Settings
+#### Optional Keyboard Input Signals
 
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
+Your module can optionally accept these **input ports** for user interaction:
 
-For example:
+```verilog
+input wire key_0, key_1, key_2, key_3, key_4;
+input wire key_5, key_6, key_7, key_8, key_9;
+input wire key_up, key_down, key_left, key_right;
+input wire key_space;
+```
 
-This extension contributes the following settings:
+Press keys in the simulator to drive corresponding input signals high.
 
-* `myExtension.enable`: Enable/disable this extension.
-* `myExtension.thing`: Set to `blah` to do something.
+#### Example Module Header
 
-## Known Issues
+```verilog
+module vga_display (
+  input wire clk,
+  input wire rst_n,
+  input wire key_space,
+  output wire hsync, vsync,
+  output wire [1:0] r, g, b
+);
+  // Your implementation
+endmodule
+```
 
-Calling out known issues can help limit users opening duplicate issues against your extension.
-
-## Release Notes
-
-Users appreciate release notes as you update your extension.
-
-### 1.0.0
-
-Initial release of ...
-
-### 1.0.1
-
-Fixed issue #.
-
-### 1.1.0
-
-Added features X, Y, and Z.
-
----
-
-## Following extension guidelines
-
-Ensure that you've read through the extensions guidelines and follow the best practices for creating your extension.
-
-* [Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines)
-
-## Working with Markdown
-
-You can author your README using Visual Studio Code. Here are some useful editor keyboard shortcuts:
-
-* Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux).
-* Toggle preview (`Shift+Cmd+V` on macOS or `Shift+Ctrl+V` on Windows and Linux).
-* Press `Ctrl+Space` (Windows, Linux, macOS) to see a list of Markdown snippets.
-
-## For more information
-
-* [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-* [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
-
-**Enjoy!**

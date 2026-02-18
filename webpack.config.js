@@ -45,4 +45,45 @@ const extensionConfig = {
     level: "log", // enables logging required for problem matchers
   },
 };
-module.exports = [ extensionConfig ];
+
+/** @type WebpackConfig */
+const webviewConfig = {
+  target: 'web',
+  mode: 'none',
+
+  entry: './src/webview/simulatorWebview.ts',
+  output: {
+    path: path.resolve(__dirname, 'dist'),
+    filename: 'webview.js',
+  },
+  experiments: {
+    topLevelAwait: true,
+  },
+  resolve: {
+    extensions: ['.ts', '.js'],
+    fallback: {
+      path: false,
+      fs: false,
+      crypto: false,
+      child_process: false,
+      module: false,
+    },
+  },
+  module: {
+    rules: [
+      {
+        test: /\.ts$/,
+        exclude: /node_modules/,
+        use: [{ loader: 'ts-loader', options: { transpileOnly: true } }]
+      },
+      {
+        test: /\.wasm$/,
+        type: 'asset/resource',
+        generator: { filename: '[name][ext]' }
+      }
+    ]
+  },
+  devtool: 'nosources-source-map',
+};
+
+module.exports = [ extensionConfig, webviewConfig ];

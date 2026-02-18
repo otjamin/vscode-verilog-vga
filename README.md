@@ -2,6 +2,8 @@
 
 A VS Code extension that provides an integrated VGA simulator for Verilog designs. Simulate and visualize VGA output directly in your editor.
 
+This extension brings the great learning project [VGA Playground](https://vga-playground.com/) directly to VSCode. Also learn more at [TinyTapeout](https://tinytapeout.com/) of how to turn your VGA design from here into a real chip at reasonable cost.
+
 ## Usage
 
 ### Opening the Simulator

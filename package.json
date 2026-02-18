@@ -1,8 +1,9 @@
 {
   "name": "verilogvga",
   "displayName": "VerilogVGA",
-  "description": "",
-  "version": "0.0.1",
+  "description": "VGA Simulator for Verilog in VS Code",
+  "version": "0.1.0",
+  "publisher": "otjamin",
   "repository": {
     "type": "git",
     "url": "https://github.com/otjamin/vscode-verilog-vga"
@@ -10,6 +11,7 @@
   "engines": {
     "vscode": "^1.109.0"
   },
+  "icon": "images/vga-sim-icon.png",
   "categories": [
     "Other"
   ],
